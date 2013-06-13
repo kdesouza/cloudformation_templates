@@ -24,12 +24,28 @@
                                                     "apt-get install -q -y ntp htop ntpdate\n",
                                                     "apt-get install -q -y jenkins\n",
 
+                                                    "apt-get -q -y install python-setuptools\n",
+                                                    "easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+
                                                     "/etc/init.d/jenkins start\n",
-                                                    "/opt/aws/bin/cfn-signal -e $? \n"
+                                                    "cfn-signal -e $? -r \"Jenkins server setup complete\" '", { "Ref" : "JenkinsWaitHandle" }, "'\n"
                                                 ]
                                             ] 
                                         } 
                                      }
+            }
+        },
+
+        "JenkinsWaitHandle" : {
+            "Type" : "AWS::CloudFormation::WaitConditionHandle"
+        },
+
+        "JenkinsWaitCondition" : {
+            "Type" : "AWS::CloudFormation::WaitCondition",
+            "DependsOn" : "JenkinsInstance",
+            "Properties" : {
+                "Handle" : { "Ref" : "JenkinsWaitHandle" },
+                "Timeout" : "600"
             }
         }
     },

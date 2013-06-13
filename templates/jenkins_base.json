@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion" : "2010-09-09",
-    "Description"              : "Peazie Jenkins Instance",
+    "Description"              : "Jenkins Standalone Instance",
 
     "Resources" : {
         "JenkinsInstance" : {
@@ -15,34 +15,21 @@
                                                 "", 
                                                 [
                                                     "#!/bin/bash -v\n",
-                                                    "wget -q -O - http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key | sudo apt-key add -\n",
+                                                    "locale-gen en_AU.UTF-8\n",
 
+                                                    "wget -q -O - http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key | sudo apt-key add -\n",
                                                     "echo 'deb http://pkg.jenkins-ci.org/debian binary/' > /etc/apt/sources.list.d/jenkis.list \n",
 
                                                     "apt-get update\n",
-                                                    "locale-gen en_AU.UTF-8\n",
                                                     "apt-get install -q -y ntp htop ntpdate\n",
                                                     "apt-get install -q -y jenkins\n",
+
                                                     "/etc/init.d/jenkins start\n",
-                                                    "/opt/aws/bin/cfn-signal -e 1 -r \"Jenkins instance setup complete\" '", { "Ref" : "WaitHandleJenkinsInstance" }, "'\n"
+                                                    "/opt/aws/bin/cfn-signal -e $? \n"
                                                 ]
                                             ] 
                                         } 
                                      }
-            }
-        },
-
-        "WaitHandleJenkinsInstance" : {
-            "Type" : "AWS::CloudFormation::WaitConditionHandle",
-            "Properties" : {}
-        },
-
-        "WaitConditionJenkinsInstance" : {
-            "Type" : "AWS::CloudFormation::WaitCondition",
-            "DependsOn" : "JenkinsInstance",
-            "Properties" : {
-                "Handle" : { "Ref" : "WaitHandleJenkinsInstance" },
-                "Timeout" : "600"
             }
         }
     },

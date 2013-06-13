@@ -1,0 +1,67 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description"              : "Peazie Jenkins Instance",
+
+    "Resources" : {
+        "JenkinsInstance" : {
+            "Type" : "AWS::EC2::Instance",
+            "Properties" : {
+                "AvailabilityZone" : "us-west-1b",
+                "SecurityGroups"   : [ "qa" ],
+                "KeyName"          : "pav_prod",
+                "ImageId"          : "ami-d383af96",
+                "UserData"         : { "Fn::Base64" : { 
+                                            "Fn::Join" : [
+                                                "", 
+                                                [
+                                                    "#!/bin/bash -v\n",
+                                                    "wget -q -O - http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key | sudo apt-key add -\n",
+
+                                                    "echo 'deb http://pkg.jenkins-ci.org/debian binary/' > /etc/apt/sources.list.d/jenkis.list \n",
+
+                                                    "apt-get update\n",
+                                                    "locale-gen en_AU.UTF-8\n",
+                                                    "apt-get install -q -y ntp htop ntpdate\n",
+                                                    "apt-get install -q -y jenkins\n",
+                                                    "/etc/init.d/jenkins start\n",
+                                                    "/opt/aws/bin/cfn-signal -e 1 -r \"Jenkins instance setup complete\" '", { "Ref" : "WaitHandleJenkinsInstance" }, "'\n"
+                                                ]
+                                            ] 
+                                        } 
+                                     }
+            }
+        },
+
+        "WaitHandleJenkinsInstance" : {
+            "Type" : "AWS::CloudFormation::WaitConditionHandle",
+            "Properties" : {}
+        },
+
+        "WaitConditionJenkinsInstance" : {
+            "Type" : "AWS::CloudFormation::WaitCondition",
+            "DependsOn" : "JenkinsInstance",
+            "Properties" : {
+                "Handle" : { "Ref" : "WaitHandleJenkinsInstance" },
+                "Timeout" : "600"
+            }
+        }
+    },
+
+    "Outputs" : {
+        "JenkinsURL" : {
+            "Value" : { 
+                "Fn::Join" : [
+                    "", 
+                    [ "http://", { "Fn::GetAtt" : [ "JenkinsInstance", "PublicDnsName"] }, ":8080" ]
+                ] 
+            },
+            "Description" : "Jenkins Instance"
+        },
+
+        "JenkinsPublicDns" : {
+            "Value" : { "Fn::GetAtt" : [ "JenkinsInstance", "PublicDnsName"] },
+            "Description" : "Jenkins public DNS name"
+        }
+
+    }
+}

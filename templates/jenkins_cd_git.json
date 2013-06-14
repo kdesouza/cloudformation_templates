@@ -1,0 +1,80 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description"              : "Jenkins Standalone Instance",
+
+    "Resources" : {
+        "JenkinsInstance" : {
+            "Type" : "AWS::EC2::Instance",
+            "Properties" : {
+                "AvailabilityZone" : "us-west-1b",
+                "SecurityGroups"   : [ "qa" ],
+                "KeyName"          : "pav_prod",
+                "ImageId"          : "ami-d383af96",
+                "UserData"         : { "Fn::Base64" : { 
+                                            "Fn::Join" : [
+                                                "", 
+                                                [
+                                                    "#!/bin/bash -v\n",
+                                                    "locale-gen en_AU.UTF-8\n",
+
+                                                    "wget -q -O - http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key | sudo apt-key add -\n",
+                                                    "echo 'deb http://pkg.jenkins-ci.org/debian binary/' > /etc/apt/sources.list.d/jenkis.list \n",
+
+                                                    "apt-get update\n",
+                                                    "apt-get install -q -y ntp htop ntpdate\n",
+                                                    "apt-get install -q -y jenkins\n",
+
+                                                    "apt-get -q -y install python-setuptools\n",
+                                                    "easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+
+                                                    "cd /var/lib/jenkins/plugins\n",
+
+                                                    "wget http://updates.jenkins-ci.org/latest/dashboard-view.hpi\n",
+                                                    "wget http://updates.jenkins-ci.org/latest/build-pipeline-plugin.hpi\n",
+                                                    "wget http://updates.jenkins-ci.org/latest/token-macro.hpi\n",
+                                                    "wget http://updates.jenkins-ci.org/latest/multiple-scms.hpi\n",
+                                                    "wget http://updates.jenkins-ci.org/latest/git-client.hpi\n",
+                                                    "wget http://updates.jenkins-ci.org/latest/parameterized-trigger.hpi\n",
+                                                    "wget http://updates.jenkins-ci.org/latest/git.hpi\n",
+
+                                                    "/etc/init.d/jenkins start\n",
+                                                    "cfn-signal -e $? -r \"Jenkins server setup complete\" '", { "Ref" : "JenkinsWaitHandle" }, "'\n"
+                                                ]
+                                            ] 
+                                        } 
+                                     }
+            }
+        },
+
+        "JenkinsWaitHandle" : {
+            "Type" : "AWS::CloudFormation::WaitConditionHandle"
+        },
+
+        "JenkinsWaitCondition" : {
+            "Type" : "AWS::CloudFormation::WaitCondition",
+            "DependsOn" : "JenkinsInstance",
+            "Properties" : {
+                "Handle" : { "Ref" : "JenkinsWaitHandle" },
+                "Timeout" : "1200"
+            }
+        }
+    },
+
+    "Outputs" : {
+        "JenkinsURL" : {
+            "Value" : { 
+                "Fn::Join" : [
+                    "", 
+                    [ "http://", { "Fn::GetAtt" : [ "JenkinsInstance", "PublicDnsName"] }, ":8080" ]
+                ] 
+            },
+            "Description" : "Jenkins Instance"
+        },
+
+        "JenkinsPublicDns" : {
+            "Value" : { "Fn::GetAtt" : [ "JenkinsInstance", "PublicDnsName"] },
+            "Description" : "Jenkins public DNS name"
+        }
+
+    }
+}
